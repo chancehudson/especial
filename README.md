@@ -2,6 +2,38 @@
 
 A websocket based communication protocol.
 
+## Usage
+
+`npm install especial`
+
+### Server
+
+```js
+const especial = require('especial')
+
+const app = especial()
+
+app.handle('utils.ping', (data, send, next) => {
+  send('pong')
+})
+
+const server = app.listen(4000, () => {
+  console.log(`Listening on port 4000`)
+})
+
+```
+
+### Client
+
+```js
+const EspecialClient = require('especial/client')
+
+const client = new EspecialClient('ws://localhost:4000')
+const { data, message, status } = await client.send('utils.ping')
+
+console.log(message) // "pong"
+```
+
 ## Protocol
 
 Especial communicates across websockets using JSON encoded payloads. Clients emit a payload with a unique id and the server is expected to respond with a single message with the same id.
