@@ -4,6 +4,7 @@ module.exports = class Especial {
   constructor() {
     this.connections = []
     this.handlers = {}
+    this.middlewares = []
   }
 
   broadcast(_rid, _message, _data) {
@@ -22,6 +23,16 @@ module.exports = class Especial {
     for (const ws of this.connections) {
       this._serializeSend(payload, ws)
     }
+  }
+
+  use(_match, _fn) {
+    let fn = _fn
+    let match = _match
+    if (typeof match === 'function') {
+      fn = _match
+      match = null
+    }
+    this.middlewares.push({ fn, match })
   }
 
   handle(route, ...handlers) {
@@ -63,9 +74,6 @@ module.exports = class Especial {
   async _handlePayload(payload, ws) {
     const { route, _rid } = payload
     const handlers = this.handlers[route]
-    if (!handlers || handlers.length === 0) {
-      throw new Error(`No handler for route "${route}"`)
-    }
     const send = (_message, _data, _status) => {
       const message = typeof _message === 'string' ? _message : ''
       let data = {}
@@ -89,6 +97,23 @@ module.exports = class Especial {
         route,
         message: message || (status === 0 ? 'Success' : 'Failure'),
       }, ws)
+    }
+    if (!handlers || handlers.length === 0) {
+      send(`No handler for route "${route}"`, 1)
+      return
+    }
+    const middlewares = this.middlewares.filter(({ fn, match }) => {
+      return !match ||
+        (typeof match === 'string' && match === route) ||
+        (
+          Object.prototype.toString.call(match) == '[object RegExp]' &&
+          match.test(route)
+        )
+    })
+    for (const { fn } of middlewares) {
+      await new Promise(next => {
+        fn(payload.data, send, next)
+      })
     }
     for (const handler of handlers) {
       await new Promise(next => {

@@ -10,8 +10,24 @@ module.exports = class EspecialClient {
     this.connectionHandlers = {}
   }
 
-  listen(rid, fn) {
-    this._ridListeners[rid] = fn
+  once(_rid, fn) {
+    this._ridListeners[_rid] = async (...args) => {
+      try {
+        await Promise.resolve(fn(...args))
+        delete this._ridListeners[_rid]
+      } catch (err) {
+        delete this._ridListeners[_rid]
+        throw err
+      }
+    }
+  }
+
+  listen(_rid, fn) {
+    this._ridListeners[_rid] = fn
+  }
+
+  clearListener(_rid) {
+    delete this._ridListeners[_rid]
   }
 
   addConnectedHandler(fn) {
@@ -30,10 +46,10 @@ module.exports = class EspecialClient {
     }
     const _rid = uuid.v4()
     const p = new Promise((rs, rj) => {
-      this._ridListeners[_rid] = (err, payload) => {
+      this.once(_rid, (err, payload) => {
         if (err) rj(err)
         else rs(payload)
-      }
+      })
     })
     const payload = {
       _rid,
