@@ -1,25 +1,33 @@
 const uuid = require('uuid')
 
+const UNHANDLED_MESSAGE = 'unhandledMessage'
+
 module.exports = class EspecialClient {
-  constructor(url) {
+  constructor(url, _WebSocket = WebSocket) {
     this.url = url
     this._ridListeners = {}
     this.connected = false
     this.reconnect = true
     this.retries = Infinity
     this.connectionHandlers = {}
+    this._WebSocket = _WebSocket
+    this.listeners = {
+      [UNHANDLED_MESSAGE]: [],
+    }
   }
 
   once(_rid, fn) {
     this._ridListeners[_rid] = async (...args) => {
-      try {
-        await Promise.resolve(fn(...args))
-        delete this._ridListeners[_rid]
-      } catch (err) {
-        delete this._ridListeners[_rid]
-        throw err
-      }
+      delete this._ridListeners[_rid]
+      fn(...args)
     }
+  }
+
+  on(message, fn) {
+    if (!Array.isArray(this.listeners[message])) {
+      throw new Error(`Unrecognized event "${message}"`)
+    }
+    this.listeners[message].push(fn)
   }
 
   listen(_rid, fn) {
@@ -61,7 +69,7 @@ module.exports = class EspecialClient {
   }
 
   async connect(retryCount = 0) {
-    const ws = new WebSocket(this.url)
+    const ws = new this._WebSocket(this.url)
     await new Promise((rs, rj) => {
       ws.onmessage = ({ data }) => {
         this._handleMessage(data)
@@ -75,10 +83,13 @@ module.exports = class EspecialClient {
         }
       }
       ws.onclose = async () => {
+        const newDisconnect = this.connected
         this.connected = false
         delete this.ws
-        for (const [key, fn] of Object.entries(this.connectionHandlers)) {
-          fn()
+        if (newDisconnect) {
+          for (const [key, fn] of Object.entries(this.connectionHandlers)) {
+            fn()
+          }
         }
       }
       ws.onerror = async (err) => {
@@ -93,17 +104,24 @@ module.exports = class EspecialClient {
     })
   }
 
+  disconnect() {
+    if (!this.connected) return
+    this.ws.close()
+  }
+
   _handleMessage(data) {
     const payload = JSON.parse(data)
-    if (!payload._rid) {
-      console.log('Received message with no _rid')
-      console.log(data)
-      return
-    }
     const fn = this._ridListeners[payload._rid]
     if (typeof fn !== 'function') {
-      console.log(payload)
-      console.log('No handler for message')
+      const fns = this.listeners[UNHANDLED_MESSAGE]
+      if (fns.length === 0) {
+        console.error(payload)
+        console.error('No handler for message')
+        return
+      }
+      for (const _fn of fns) {
+        _fn()
+      }
       return
     }
     if (payload.status === 0) {

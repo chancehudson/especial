@@ -58,10 +58,10 @@ class Especial {
           const payload = JSON.parse(message)
           this._handlePayload(payload, ws)
         } catch (err) {
-          ws.send({
+          this._serializeSend({
             status: 1,
             error: 'Failed to parse JSON'
-          })
+          }, ws)
         }
       })
     })
@@ -127,6 +127,7 @@ class Especial {
       ws.send(JSON.stringify(payload))
     } catch (err) {
       ws.send(JSON.stringify({
+        _rid: payload._rid,
         status: 1,
         message: 'Failed to serialize message',
         data: err,
