@@ -1,6 +1,6 @@
 {
   "name": "especial",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Websocket based communication protocol",
   "main": "index.js",
   "scripts": {
