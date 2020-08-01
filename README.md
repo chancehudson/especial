@@ -1,4 +1,4 @@
-# especial
+# especial [![pipeline status](https://gitlab.com/jchancehud/especial/badges/master/pipeline.svg)](https://gitlab.com/jchancehud/especial/-/commits/master) [![coverage report](https://gitlab.com/jchancehud/especial/badges/master/coverage.svg)](https://gitlab.com/jchancehud/especial/-/commits/master)
 
 A websocket based communication protocol.
 

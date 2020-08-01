@@ -4,7 +4,7 @@
   "description": "Websocket based communication protocol",
   "main": "index.js",
   "scripts": {
-    "test": "nyc --reporter=html ava"
+    "test": "nyc --reporter=text-summary --reporter=html ava"
   },
   "repository": {
     "type": "git",
