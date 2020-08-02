@@ -8,6 +8,12 @@ class Especial {
   }
 
   broadcast(_rid, _message, _data) {
+    for (const ws of this.connections) {
+      this.broadcastOne(_rid, _message, _data, ws)
+    }
+  }
+
+  broadcastOne(_rid, _message, _data, ws) {
     let message = _message
     let data = _data
     if (typeof _message === 'object') {
@@ -20,9 +26,7 @@ class Especial {
       data,
       status: 0,
     }
-    for (const ws of this.connections) {
-      this._serializeSend(payload, ws)
-    }
+    this._serializeSend(payload, ws)
   }
 
   use(_match, _fn) {
@@ -112,12 +116,12 @@ class Especial {
     })
     for (const { fn } of middlewares) {
       await new Promise(next => {
-        fn(payload.data, send, next)
+        fn(payload.data, send, next, ws)
       })
     }
     for (const handler of handlers) {
       await new Promise(next => {
-        handler(payload.data, send, next)
+        handler(payload.data, send, next, ws)
       })
     }
   }
