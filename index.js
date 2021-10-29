@@ -114,19 +114,15 @@ class Especial {
           match.test(route)
         )
     })
-    for (const { fn } of middlewares) {
+    const functions = [
+      ...middlewares.map(({ fn }) => fn),
+      ...handlers,
+    ]
+    for (const fn of functions) {
       let nextCalled = false
       const next = () => nextCalled = true
       await Promise.resolve(
         fn(payload.data, send, next, ws)
-      )
-      if (!nextCalled) return
-    }
-    for (const handler of handlers) {
-      let nextCalled = false
-      const next = () => nextCalled = true
-      await Promise.resolve(
-        handler(payload.data, send, next, ws)
       )
       if (!nextCalled) return
     }
