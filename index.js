@@ -81,9 +81,9 @@ class Especial {
     const send = (_message, _data, _status) => {
       const message = typeof _message === 'string' ? _message : ''
       let data = {}
-      if (typeof _message === 'object' || Array.isArray(_message)) {
+      if (typeof _message === 'object') {
         data = _message
-      } else if (typeof _data === 'object' || Array.isArray(_message)) {
+      } else if (typeof _data === 'object') {
         data = _data
       }
       let status = 0
