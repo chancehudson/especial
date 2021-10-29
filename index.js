@@ -115,14 +115,20 @@ class Especial {
         )
     })
     for (const { fn } of middlewares) {
-      await new Promise(next => {
+      let nextCalled = false
+      const next = () => nextCalled = true
+      await Promise.resolve(
         fn(payload.data, send, next, ws)
-      })
+      )
+      if (!nextCalled) return
     }
     for (const handler of handlers) {
-      await new Promise(next => {
+      let nextCalled = false
+      const next = () => nextCalled = true
+      await Promise.resolve(
         handler(payload.data, send, next, ws)
-      })
+      )
+      if (!nextCalled) return
     }
   }
 

@@ -15,6 +15,60 @@ test('should ping route', async (t) => {
   server.close()
 })
 
+test('should abort if next is not called (middleware)', async (t) => {
+  const { server, app, url } = await createServer()
+  const middleware = (data, send, next) => send('aborted')
+  app.use('ping', middleware)
+  app.handle('ping', (data, send) => {
+    t.assert(false, 'Should not execute handler after next is not called')
+  })
+  const client = new EspecialClient(url, WebSocket)
+  await client.connect()
+  const { message } = await client.send('ping')
+  t.assert(message === 'aborted')
+  server.close()
+})
+
+test('should abort if next is not called (handler)', async (t) => {
+  const { server, app, url } = await createServer()
+  const middleware = (data, send, next) => send('aborted')
+  app.handle('ping', middleware, (data, send) => {
+    t.assert(false, 'Should not execute handler after next is not called')
+  })
+  const client = new EspecialClient(url, WebSocket)
+  await client.connect()
+  const { message } = await client.send('ping')
+  t.assert(message === 'aborted')
+  server.close()
+})
+
+test('should not abort if next is called (handler)', async (t) => {
+  const { server, app, url } = await createServer()
+  const middleware = (data, send, next) => next()
+  app.handle('ping', middleware, (data, send) => {
+    send('pong')
+  })
+  const client = new EspecialClient(url, WebSocket)
+  await client.connect()
+  const { message } = await client.send('ping')
+  t.assert(message === 'pong')
+  server.close()
+})
+
+test('should not abort if next is called (middleware)', async (t) => {
+  const { server, app, url } = await createServer()
+  const middleware = (data, send, next) => next()
+  app.use('ping', middleware)
+  app.handle('ping', (data, send) => {
+    send('pong')
+  })
+  const client = new EspecialClient(url, WebSocket)
+  await client.connect()
+  const { message } = await client.send('ping')
+  t.assert(message === 'pong')
+  server.close()
+})
+
 test('should retry connecting to server', async (t) => {
   const { app, port, url } = await createServer(false)
   t.plan(2)
