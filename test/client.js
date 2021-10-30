@@ -87,12 +87,12 @@ test('should retry connecting to server', async (t) => {
     }
   })
   await client.connect()
-  await new Promise(r => setTimeout(r, 2000))
+  await new Promise(r => setTimeout(r, 5000))
   await new Promise((rs, rj) => app.listen(port, (err) => {
     if (err) rj(err)
     else rs()
   }))
-  await new Promise(r => setTimeout(r, 2000))
+  await new Promise(r => setTimeout(r, 5000))
 })
 
 test('should throw if no reconnection', async (t) => {

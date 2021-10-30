@@ -137,3 +137,9 @@ test('should test parallel messages', async (t) => {
   }
   await Promise.all(promises)
 })
+
+test('should start server without callback', async (t) => {
+  const { app, port } = await createServer(false)
+  app.listen(port)
+  t.pass()
+})
