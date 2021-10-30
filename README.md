@@ -1,4 +1,4 @@
-# especial [![pipeline status](https://gitlab.com/jchancehud/especial/badges/master/pipeline.svg)](https://gitlab.com/jchancehud/especial/-/commits/master) [![coverage report](https://gitlab.com/jchancehud/especial/badges/master/coverage.svg)](https://gitlab.com/jchancehud/especial/-/jobs/artifacts/master/file/coverage/index.html?job=testing)
+# especial <a href="https://app.circleci.com/pipelines/github/JChanceHud/especial" target="_blank">![build-badge](https://img.shields.io/circleci/build/github/JChanceHud/especial?token=9c37b99e7b34a165ae1f3e0c6ea4c5acead2db40)</a> <a href="https://tubby.cloud/tubs/617c8c01d6af3500196df884/index.html" target="_blank">![coverage-badge](https://tubby.cloud/tubs/617c8c01d6af3500196df884/badge.svg)</a>
 
 A websocket based communication protocol.
 
