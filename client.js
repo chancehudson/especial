@@ -1,4 +1,4 @@
-const uuid = require('uuid')
+const { nanoid } = require('nanoid')
 
 const UNHANDLED_MESSAGE = 'unhandledMessage'
 
@@ -39,7 +39,7 @@ module.exports = class EspecialClient {
   }
 
   addConnectedHandler(fn) {
-    const id = uuid.v4()
+    const id = nanoid()
     this.connectionHandlers[id] = fn
     return id
   }
@@ -52,7 +52,7 @@ module.exports = class EspecialClient {
     if (!this.connected) {
       throw new Error('Not connected')
     }
-    const _rid = uuid.v4()
+    const _rid = nanoid()
     const p = new Promise((rs, rj) => {
       this.once(_rid, (err, payload) => {
         if (err) rj(err)

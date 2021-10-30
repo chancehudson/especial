@@ -3,7 +3,7 @@ const especial = require('..')
 const EspecialClient = require('../client')
 const { createServer } = require('./helpers')
 const WebSocket = require('ws')
-const uuid = require('uuid')
+const { nanoid } = require('nanoid')
 
 test('should fail to register multiple handlers for route', async (t) => {
   const app = especial()
@@ -128,7 +128,7 @@ test('should test parallel messages', async (t) => {
   const COUNT = 100000
   t.plan(COUNT)
   const sendTest = async (i) => {
-    const id = uuid.v4()
+    const id = nanoid()
     const { data } = await client.send('test', { id })
     t.assert(data.id === id)
   }
