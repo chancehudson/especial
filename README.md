@@ -44,14 +44,14 @@ Requests are structured like this:
 
 ```json
 {
-  "_rid": "68f2ca32-d49e-4339-8e7f-1d846774aa3b",
+  "_rid": "jki7uo9XsOEJkel3PrF_T",
   "route": "utils.ping",
   "data": {}
 }
 ```
 
 The fields are as follows:
-  - `_rid`: A unique v4 UUID identifying the specific request
+  - `_rid`: A unique identifier for the request
   - `route`: A string indicating the function to execute
   - `data`: An object containing arbitrary data for the function
 
@@ -61,7 +61,7 @@ Responses are structured like this:
 
 ```json
 {
-  "_rid": "68f2ca32-d49e-4339-8e7f-1d846774aa3b",
+  "_rid": "jki7uo9XsOEJkel3PrF_T",
   "route": "utils.ping",
   "data": {},
   "message": "pong",
