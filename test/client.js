@@ -161,6 +161,49 @@ test('should not double connect', async (t) => {
   await client.connect()
 })
 
+test('connect should accept reconnect option', async (t) => {
+  const { app, port, url } = await createServer(false)
+  const client = new EspecialClient(url, WebSocket)
+  setTimeout(() => {
+    app.listen(port)
+  }, 2000)
+  try {
+    await client.connect({
+      reconnect: false,
+    })
+    t.fail()
+  } catch (err) {
+    t.pass()
+  }
+  await new Promise(r => setTimeout(r, 3000))
+})
+
+test('connect should accept retry options', async (t) => {
+  t.plan(1)
+  const { app, port, url } = await createServer(false)
+  const client = new EspecialClient(url, WebSocket)
+  let server
+  setTimeout(() => {
+    server = app.listen(port)
+  }, 4000)
+  // wait for 4 retries, then start server
+  await client.connect({
+    retryWait: 1000,
+    retries: 5,
+  })
+  // kill the server and wait for 4 more retries to make sure retryCount reset
+  await new Promise(r => server.close(r))
+  client.addConnectedHandler(() => {
+    if (client.connected) {
+      t.pass()
+    }
+  })
+  setTimeout(() => {
+    app.listen(port)
+  }, 4000)
+  await new Promise(r => setTimeout(r, 5000))
+})
+
 test('should fail to listen for unregistered event', async (t) => {
   const { server, app, url } = await createServer()
   const client = new EspecialClient(url, WebSocket)
