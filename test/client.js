@@ -144,7 +144,7 @@ test('should safely disconnect twice', async (t) => {
   await client.connect()
   client.disconnect()
   client.disconnect()
-  await new Promise(r => setTimeout(r, 100))
+  await new Promise(r => setTimeout(r, 1000))
   client.disconnect()
   client.disconnect()
   t.pass()
