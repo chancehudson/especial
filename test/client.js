@@ -86,19 +86,19 @@ test('should retry connecting to server', async (t) => {
       client.clearConnectedHandler(disconnectedId)
     }
   })
-  await client.connect()
+  const connectPromise = client.connect()
   await new Promise(r => setTimeout(r, 5000))
   await new Promise((rs, rj) => app.listen(port, (err) => {
     if (err) rj(err)
     else rs()
   }))
   await new Promise(r => setTimeout(r, 5000))
+  await connectPromise
 })
 
 test('should throw if no reconnection', async (t) => {
   const { app, port, url } = await createServer(false)
   const client = new EspecialClient(url, WebSocket)
-  client.reconnect = false
   try {
     await client.connect()
     t.fail('Should throw error')
@@ -107,13 +107,58 @@ test('should throw if no reconnection', async (t) => {
   }
 })
 
+test('should only accept object in connect function', async (t) => {
+  const { app, port, url } = await createServer()
+  const client = new EspecialClient(url, WebSocket)
+  try {
+    await client.connect(0)
+  } catch (err) {
+    t.assert(err.toString() === 'Error: Connect options should be object')
+  }
+  try {
+    await client.connect('test')
+  } catch (err) {
+    t.assert(err.toString() === 'Error: Connect options should be object')
+  }
+})
+
+test('should attempt reconnect if disconnected', async (t) => {
+  t.plan(1)
+  const { server, app, port, url } = await createServer()
+  const client = new EspecialClient(url, WebSocket)
+  await client.connect()
+  client.addConnectedHandler(() => {
+    if (client.connected) {
+      t.pass()
+    }
+  })
+  await new Promise(r => server.close(r))
+  await new Promise(r => setTimeout(r, 3000))
+  await new Promise((rs, rj) => app.listen(port, (err) => err ? rj(err) : rs()))
+  await new Promise(r => setTimeout(r, 5000))
+})
+
 test('should safely disconnect twice', async (t) => {
-  const { app, port, url } = await createServer(false)
+  const { app, port, url } = await createServer()
   const client = new EspecialClient(url, WebSocket)
   await client.connect()
   client.disconnect()
   client.disconnect()
+  await new Promise(r => setTimeout(r, 100))
+  client.disconnect()
+  client.disconnect()
   t.pass()
+})
+
+test('should not double connect', async (t) => {
+  t.plan(1)
+  const { app, port, url } = await createServer()
+  const client = new EspecialClient(url, WebSocket)
+  client.addConnectedHandler(() => {
+    t.pass()
+  })
+  await client.connect()
+  await client.connect()
 })
 
 test('should fail to listen for unregistered event', async (t) => {
