@@ -2,9 +2,27 @@ version: 2.1
 workflows:
   test_app:
     jobs:
-      - test
+      - test_only:
+          filters:
+            branches:
+              ignore: master
+      - test_and_upload:
+          filters:
+            branches:
+              only: master
 jobs:
-  test:
+  test_only:
+    machine:
+      image: ubuntu-2004:202010-01
+    steps:
+      - checkout
+      - run:
+          name: Install
+          command: npm ci
+      - run:
+          name: Test
+          command: npm t
+  test_and_upload:
     machine:
       image: ubuntu-2004:202010-01
     steps:
