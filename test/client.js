@@ -341,3 +341,17 @@ test('should throw uncaught exception if no listener', async (t) => {
   await new Promise(r => setTimeout(r, 500))
   t.pass()
 })
+
+test('should catch error thrown in connection handler', async (t) => {
+  const { server, app, url } = await createServer()
+  const client = new EspecialClient(url, WebSocket)
+  client.addConnectedHandler(() => {
+    throw new Error('This error is expected, do not worry')
+  })
+  try {
+    await client.connect()
+    t.pass()
+  } catch (err) {
+    t.fail('Error should have been caught')
+  }
+})

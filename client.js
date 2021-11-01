@@ -51,19 +51,21 @@ module.exports = class EspecialClient {
     delete this.connectionHandlers[id]
   }
 
-  callConnectionHandlers() {
+  async callConnectionHandlers() {
     // execute after the retry promise to protect against `disconnect` being
     // called in the connection handler
-    Promise.resolve(this._retryPromise)
-      .then(() => {
-        for (const [, fn] of Object.entries(this.connectionHandlers)) {
-          Promise.resolve(fn())
-            .catch((err) => {
-              console.log(err)
-              console.log('Uncaught error in especial connection handler')
-            })
+    await Promise.resolve(this._retryPromise)
+    for (const [, fn] of Object.entries(this.connectionHandlers)) {
+      // don't wait on each individual handler, execute in parallel
+      ;(async () => {
+        try {
+          await Promise.resolve(fn())
+        } catch (err) {
+          console.log(err)
+          console.log('Uncaught error in especial connection handler')
         }
-      })
+      })()
+    }
   }
 
   async send(route, data = {}) {
