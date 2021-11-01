@@ -141,6 +141,57 @@ test('should attempt reconnect if disconnected', async (t) => {
   await new Promise(r => setTimeout(r, 5000))
 })
 
+test('should retry connections using correct timing', async (t) => {
+  t.plan(4)
+  const { server, app, port, url } = await createServer()
+  const client = new EspecialClient(url, WebSocket)
+  {
+    const p = client.connect({
+      retries: 10,
+      retryWait: 3000,
+      reconnect: true,
+    })
+    // first connect attempt should be instant
+    await new Promise(r => {
+      setTimeout(() => {
+        t.assert(client.connected, 'client is not immediately connected')
+        r()
+      }, 100)
+    })
+    await p
+  }
+  await new Promise(r => server.close(r))
+  let newServer
+  {
+    // reconnect attempts should begin immediately
+    await new Promise((r) => {
+      newServer = app.listen(port, r)
+    })
+    await new Promise(r => setTimeout(() => {
+      t.assert(client.connected, 'client did not immediately reconnect')
+      r()
+    }, 100))
+  }
+  await new Promise(r => newServer.close(r))
+  {
+    // wait for the first attempt
+    await new Promise(r => setTimeout(r, 100))
+    // now make sure the client waits an appropriate amount of time before retry
+    await new Promise((r) => {
+      newServer = app.listen(port, r)
+    })
+    // we're listening again, wait 2.5 seconds, client should not be connected
+    await new Promise(r => setTimeout(() => {
+      t.assert(!client.connected, 'client should not have reconnected yet')
+      r()
+    }, 2500))
+    await new Promise(r => setTimeout(() => {
+      t.assert(client.connected, 'client should have reconnected')
+      r()
+    }, 500))
+  }
+})
+
 test('should safely disconnect twice', async (t) => {
   const { app, port, url } = await createServer()
   const client = new EspecialClient(url, WebSocket)
