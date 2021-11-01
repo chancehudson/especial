@@ -355,3 +355,25 @@ test('should catch error thrown in connection handler', async (t) => {
     t.fail('Error should have been caught')
   }
 })
+
+test('should call route handler if duplicate listener registered', async (t) => {
+  const { server, app, url } = await createServer()
+  const client = new EspecialClient(url, WebSocket)
+  app.handle('test', (data, send) => {
+    setTimeout(() => {
+      send()
+    }, 1000)
+  })
+  await client.connect()
+  const p = client.send('test', {})
+  const _rid = Object.keys(client._ridListeners)[0]
+  client.listen(_rid, () => {
+    t.fail('Should not execute listener')
+  })
+  const failTimer = setTimeout(() => {
+    t.fail('_rid handler was not executed')
+  }, 1200)
+  await p
+  clearInterval(failTimer)
+  t.pass()
+})
