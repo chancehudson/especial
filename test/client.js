@@ -230,17 +230,6 @@ test('should cancel connection retry', async (t) => {
   }
 })
 
-test('should fail to listen for unregistered event', async (t) => {
-  const { server, app, url } = await createServer()
-  const client = new EspecialClient(url, WebSocket)
-  try {
-    client.on('not_a_real_event', () => {})
-    t.fail('Should have thrown error')
-  } catch (err) {
-    t.pass()
-  }
-})
-
 test('should ping route once', async (t) => {
   const { server, app, url } = await createServer()
   const client = new EspecialClient(url, WebSocket)
@@ -255,7 +244,7 @@ test('should ping route once', async (t) => {
       messageReceived = true
     }
   })
-  client.on('unhandledMessage', () => {
+  client.listen('unhandledMessage', () => {
     t.pass()
   })
   app.broadcast('newMessage', 'pong')
@@ -269,15 +258,15 @@ test('should listen for event', async (t) => {
   const { server, app, url } = await createServer()
   const client = new EspecialClient(url, WebSocket)
   await client.connect()
-  client.on('unhandledMessage', () => {
+  client.listen('unhandledMessage', () => {
     t.pass()
   })
-  client.listen('newMessage', (err, { data, message, status }) => {
+  const listenerId = client.listen('newMessage', (err, { data, message, status }) => {
     t.assert(message === 'pong')
   })
   app.broadcast('newMessage', 'pong')
   await new Promise(r => setTimeout(r, 1000))
-  client.clearListener('newMessage')
+  client.clearListener('newMessage', listenerId)
   app.broadcast('newMessage', {})
   await new Promise(r => setTimeout(r, 1000))
 })

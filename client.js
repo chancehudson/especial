@@ -14,7 +14,7 @@ module.exports = class EspecialClient {
     this._retryPromise = undefined
     this._cancelRetry = undefined
     this.listeners = {
-      [UNHANDLED_MESSAGE]: [],
+      [UNHANDLED_MESSAGE]: {},
     }
   }
 
@@ -25,19 +25,20 @@ module.exports = class EspecialClient {
     }
   }
 
-  on(message, fn) {
-    if (!Array.isArray(this.listeners[message])) {
-      throw new Error(`Unrecognized event "${message}"`)
-    }
-    this.listeners[message].push(fn)
-  }
-
   listen(_rid, fn) {
-    this._ridListeners[_rid] = fn
+    const listenerId = nanoid()
+    if (!this.listeners[_rid]) {
+      this.listeners[_rid] = {}
+    }
+    this.listeners[_rid][listenerId] = fn
+    return listenerId
   }
 
-  clearListener(_rid) {
-    delete this._ridListeners[_rid]
+  clearListener(_rid, listenerId) {
+    delete this.listeners[_rid][listenerId]
+    if (Object.keys(this.listeners[_rid]).length === 0) {
+      delete this.listeners[_rid]
+    }
   }
 
   addConnectedHandler(fn) {
@@ -55,7 +56,7 @@ module.exports = class EspecialClient {
     // called in the connection handler
     Promise.resolve(this._retryPromise)
       .then(() => {
-        for (const [key, fn] of Object.entries(this.connectionHandlers)) {
+        for (const [, fn] of Object.entries(this.connectionHandlers)) {
           Promise.resolve(fn())
             .catch((err) => {
               console.log(err)
@@ -220,16 +221,19 @@ module.exports = class EspecialClient {
     const payload = JSON.parse(data)
     const fn = this._ridListeners[payload._rid]
     if (typeof fn !== 'function') {
-      const fns = this.listeners[UNHANDLED_MESSAGE]
-      if (fns.length === 0) {
+      const fns = this.listeners[payload._rid] || this.listeners[UNHANDLED_MESSAGE]
+      if (Object.keys(fns).length === 0) {
         console.error(payload)
         console.error('No handler for message')
         return
       }
-      for (const _fn of fns) {
-        _fn()
+      for (const [, _fn] of Object.entries(fns)) {
+        _fn(null, payload)
       }
       return
+    } else if (fn && this.listeners[payload._rid]) {
+      console.log('Warning, rid/listener collision. Events should have unique names!')
+      console.log('Ignoring registered listeners in favor of route handler')
     }
     if (payload.status === 0) {
       fn(null, payload)
