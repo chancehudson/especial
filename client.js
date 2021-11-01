@@ -164,10 +164,10 @@ module.exports = class EspecialClient {
   }
 
   async attemptConnect(options) {
-    if (this._retryTimer) return this._retryPromise
+    if (this._retryPromise) return this._retryPromise
     this._retryCount = 0
     let rs, rj
-    this._retryPromise = new Promise((_rs, _rj) => {
+    const promise = this._retryPromise = new Promise((_rs, _rj) => {
       rs = (a) => {
         this._cancelRetry = undefined
         _rs(a)
@@ -178,36 +178,62 @@ module.exports = class EspecialClient {
       }
       this._cancelRetry = _rj
     })
-    this._retryTimer = setInterval(async () => {
-      if (this.connected) {
-        rs()
-        this.cancelRetry()
-        return
-      }
-      try {
-        await this._connect(options)
-        rs()
-        this.cancelRetry()
-      } catch (err) {
-        this._retryCount++
+    ;(async () => {
+      for (;;) {
+        if (this._retryPromise !== promise) {
+          return
+        }
+        if (this.connected) {
+          return
+        }
         if (this._retryCount > options.retries) {
-          rj(err)
+          rj()
           this.cancelRetry()
+          return
+        } else if (this._retryCount === 0) {
+          // first try, attempt immediately
+          await this._attemptConnect(rs, rj, options)
+        } else {
+          // wait for the retry interval
+          await new Promise((_rs, _rj) => {
+            let executed = false
+            this._retryTimer = setTimeout(async () => {
+              this._retryTimer = null
+              executed = true
+              await this._attemptConnect(rs, rj, options)
+              _rs()
+            }, options.retryWait)
+            setTimeout(() => {
+              // an abort timeout so the above promise isn't left hanging
+              if (executed) return
+              _rs()
+            }, options.retryWait + 1000)
+          })
         }
       }
-    }, options.retryWait)
+    })()
     return this._retryPromise
+  }
+
+  async _attemptConnect(rs, rj, options) {
+    try {
+      await this._connect(options)
+      rs()
+      this.cancelRetry()
+    } catch (err) {
+      this._retryCount++
+    }
   }
 
   cancelRetry() {
     if (this._retryTimer) {
       clearInterval(this._retryTimer)
       this._retryTimer = null
-      this._retryPromise = undefined
-      if (this._cancelRetry) {
-        this._cancelRetry()
-        this._cancelRetry = undefined
-      }
+    }
+    this._retryPromise = undefined
+    if (this._cancelRetry) {
+      this._cancelRetry()
+      this._cancelRetry = undefined
     }
   }
 
