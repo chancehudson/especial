@@ -81,9 +81,9 @@ In addition to simple request/response communication servers may send data to cl
 
 The structure of such a message is the same as a response, with the `_rid` being a simple string the client may subscribe to.
 
-### API
+## API
 
-#### Client
+### Client
 
 `constructor(url, WebSocket)`: Create a new Especial client
   - **url**, a websocket url to connect to
@@ -127,3 +127,30 @@ The structure of such a message is the same as a response, with the `_rid` being
 `clearListener(_rid, listenerId)`: Clear a route listener.
   - **_rid**: The route identifier to clear
   - **listenerId**: The listener id to clear
+
+### Server
+
+`constructor()`: Create a new Especial app.
+
+`listen(port, cb)`: Start a websocket server listening on the specified port.
+  - **port**: The port the server should listen on
+  - **cb**: A callback function to be executed when the server starts. Any error will be passed as the first argument
+
+`use(match, fn)`: Register a middleware function to be used for a set of routes.
+  - **match**: Either a string or regular expression used to determine if the middleware should be executed for a route. If it's a string routes are exactly matched
+  - **fn**: A middleware function to be executed for a route
+
+`handle(route, ...handlers)`: Register functions to be called for a given route.
+  - **route**: A string route to register handlers for. Wildcards are not supported, the route is directly matched during requests
+  - **handlers**: One or more functions to be executed in series for a route
+
+`broadcast(_rid, _message, _data)`: Broadcast a message to all connected clients.
+  - **_rid**: The route id to use for the broadcast
+  - **_message**: The string message to be sent in the payload
+  - **_data**: JSON serializable data to be sent in the payload
+
+`broadcastOne(_rid, _message, _data, ws)`: Broadcast a message to a specific client.
+  - **_rid**: The route id to use for the broadcast
+  - **_message**: The string message to be sent in the payload
+  - **_data**: JSON serializable data to be sent in the payload
+  - **ws**: The websocket for the client that should receive the broadcast
