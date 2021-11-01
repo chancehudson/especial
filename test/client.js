@@ -261,7 +261,7 @@ test('should listen for event', async (t) => {
   client.listen('unhandledMessage', () => {
     t.pass()
   })
-  const listenerId = client.listen('newMessage', (err, { data, message, status }) => {
+  const listenerId = client.listen('newMessage', ({ data, message, status }) => {
     t.assert(message === 'pong')
   })
   app.broadcast('newMessage', 'pong')

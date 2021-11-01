@@ -72,9 +72,9 @@ module.exports = class EspecialClient {
     }
     const _rid = nanoid()
     const p = new Promise((rs, rj) => {
-      this.once(_rid, (err, payload) => {
-        if (err) rj(err)
-        else rs(payload)
+      this.once(_rid, (payload) => {
+        if (payload.status === 0) rs(payload)
+        else rj(payload)
       })
     })
     const payload = {
@@ -228,17 +228,13 @@ module.exports = class EspecialClient {
         return
       }
       for (const [, _fn] of Object.entries(fns)) {
-        _fn(null, payload)
+        _fn(payload)
       }
       return
     } else if (fn && this.listeners[payload._rid]) {
       console.log('Warning, rid/listener collision. Events should have unique names!')
       console.log('Ignoring registered listeners in favor of route handler')
     }
-    if (payload.status === 0) {
-      fn(null, payload)
-    } else {
-      fn(payload)
-    }
+    fn(payload)
   }
 }
