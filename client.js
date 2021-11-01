@@ -107,13 +107,7 @@ module.exports = class EspecialClient {
     } else {
       throw new Error('Connect options should be object')
     }
-    try {
-      await this._connect(options)
-      return
-    } catch (err) {
-      if (!options.reconnect) throw err
-      else await this.attemptConnect(options)
-    }
+    await this.attemptConnect(options)
   }
 
   async _connect(options) {
@@ -195,6 +189,11 @@ module.exports = class EspecialClient {
         } else if (this._retryCount === 0) {
           // first try, attempt immediately
           await this._attemptConnect(rs, rj, options)
+          if (!this.connected && !options.reconnect) {
+            rj()
+            this.cancelRetry()
+            return
+          }
         } else {
           // wait for the retry interval
           await new Promise((_rs, _rj) => {
