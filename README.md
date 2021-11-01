@@ -80,3 +80,50 @@ Responses are structured like this:
 In addition to simple request/response communication servers may send data to clients without a request being made. This can be used to update data or provide new information.
 
 The structure of such a message is the same as a response, with the `_rid` being a simple string the client may subscribe to.
+
+### API
+
+#### Client
+
+`constructor(url, WebSocket)`: Create a new Especial client
+  - **url**, a websocket url to connect to
+  - **WebSocket**, the websocket implementation, defaults to the global `WebSocket` variable
+
+`connect(options): Promise<void>`: Connect to the server, resolves upon success, rejects once the number of retries has been exceeded. This promise may be pending for a long time depending on retry settings.
+  - **options**: An object specifying how reconnects should be performed
+  - **options.retries**: How many times to retry before aborting (default: 3)
+  - **options.reconnect**: Whether failed connections should automatically try to reconnect (default: true)
+  - **options.retryWait**: How long to wait between retry attempts in milliseconds (default: 2000)
+
+`addConnectedHandler(fn): id`: Register a function that will be called when the client connects or disconnects from a server.
+  - **fn**: A function to be called (no arguments are passed)
+  - **id**: The function returns a handler id that can be used to remove the handler
+
+`clearConnectedHandler(id): void`: Unregister a connection listener function.
+  - **id**: A handler id from `addConnectedHandler`.
+
+`send(route, data): Promise<Response>`: Send a message to the server.
+  - **route**: A string route to call on the server
+  - **data**: An optional object to pass to the server. This data must be JSON serializable
+  - **returns**: Returns a payload structured like the following:
+
+```js
+{
+  _rid: "jki7uo9XsOEJkel3PrF_T", // the request identifier
+  route: "utils.ping", // the requested route
+  data: {}, // any data sent from the server
+  message: "", // a response string (defaults to 'Success' or 'Failure')
+  status: 0 // a response status, 0 indicates success
+}
+```
+
+`disconnect()`: Disconnect from a server and cancel any pending retry requests.
+
+`listen(_rid, fn): string`: Listen to a custom request id. This can be used for asymmetric communication (e.g. subscribing to server events)
+  - **_rid**: A string to listen to. Any requests emitted from the server with this _rid will cause `fn` to be executed
+  - **fn**: A function to call when a message with `_rid` is received. This function is called with a response payload as the only argument
+  - **returns**: Returns a listener id that can be used to clear the listener
+
+`clearListener(_rid, listenerId)`: Clear a route listener.
+  - **_rid**: The route identifier to clear
+  - **listenerId**: The listener id to clear
