@@ -179,9 +179,6 @@ module.exports = class EspecialClient {
         if (this._retryPromise !== promise) {
           return
         }
-        if (this.connected) {
-          return
-        }
         if (this._retryCount > options.retries) {
           rj()
           this.cancelRetry()
