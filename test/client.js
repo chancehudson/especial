@@ -125,6 +125,22 @@ test('should only accept object in connect function', async (t) => {
   }
 })
 
+test('should safely call connect multiple times', async (t) => {
+  const { app, port, url } = await createServer()
+  const client = new EspecialClient(url, WebSocket)
+  const firstPromise = client.connect()
+  const promises = []
+  const count = 10
+  let resolvedPromises = 0
+  for (let x = 0; x < count; x++) {
+    client.connect().then(() => resolvedPromises++)
+  }
+  await firstPromise
+  // wait for call stack to flush
+  await new Promise(r => setTimeout(r, 1))
+  t.assert(resolvedPromises === count, 'Not all promises resolved')
+})
+
 test('should attempt reconnect if disconnected', async (t) => {
   t.plan(1)
   const { server, app, port, url } = await createServer()
