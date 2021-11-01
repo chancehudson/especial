@@ -9,6 +9,10 @@ module.exports = class EspecialClient {
     this.connected = false
     this.connectionHandlers = {}
     this._WebSocket = _WebSocket
+    this._retryCount = 0
+    this._retryTimer = null
+    this._retryPromise = undefined
+    this._cancelRetry = undefined
     this.listeners = {
       [UNHANDLED_MESSAGE]: [],
     }
@@ -46,6 +50,21 @@ module.exports = class EspecialClient {
     delete this.connectionHandlers[id]
   }
 
+  callConnectionHandlers() {
+    // execute after the retry promise to protect against `disconnect` being
+    // called in the connection handler
+    Promise.resolve(this._retryPromise)
+      .then(() => {
+        for (const [key, fn] of Object.entries(this.connectionHandlers)) {
+          Promise.resolve(fn())
+            .catch((err) => {
+              console.log(err)
+              console.log('Uncaught error in especial connection handler')
+            })
+        }
+      })
+  }
+
   async send(route, data = {}) {
     if (!this.connected) {
       throw new Error('Not connected')
@@ -73,19 +92,28 @@ module.exports = class EspecialClient {
    *
    * Use addConnectedHandler to listen for connection changes.
    **/
-  async connect(_options = {}, _retryCount = 0) {
-    if (this.connected) return
+  async connect(_options = {}) {
+    if (this.connected || this._retryTimer) return
     const options = {
       retries: 3,
       reconnect: true,
       retryWait: 2000,
     }
-    let retryCount = _retryCount
     if (typeof _options === 'object') {
       Object.assign(options, _options)
     } else {
       throw new Error('Connect options should be object')
     }
+    try {
+      await this._connect(options)
+      return
+    } catch (err) {
+      if (!options.reconnect) throw err
+      else await this.attemptConnect(options)
+    }
+  }
+
+  async _connect(options) {
     const ws = new this._WebSocket(this.url)
     await new Promise((_rs, _rj) => {
       let promiseResolved = false
@@ -108,46 +136,82 @@ module.exports = class EspecialClient {
         this.ws = ws
         this.connected = true
         // reset the retry count if we establish a connection
-        retryCount = 0
         rs()
-        for (const [key, fn] of Object.entries(this.connectionHandlers)) {
-          fn()
-        }
+        this.callConnectionHandlers()
       }
       ws.onclose = async (event) => {
         const newDisconnect = this.connected
         this.connected = false
         delete this.ws
         if (newDisconnect) {
-          for (const [key, fn] of Object.entries(this.connectionHandlers)) {
-            fn()
-          }
+          this.callConnectionHandlers()
         }
-        if (event.code === 1006) {
+        if (event.code !== 1000) {
           // https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code
-          // unexpected disconnect, attempt a reconnect
-          if (!options.reconnect || retryCount > options.retries) {
-            return rj()
-          }
-          await new Promise(r => setTimeout(r, options.retryWait))
-          try {
-            await this.connect(_options, ++retryCount)
-            rs()
-          } catch (err) {
-            rj(err)
+          // unexpected disconnect
+          rj()
+          // start retrying to connect as necessary
+          if (options.reconnect) {
+            this.attemptConnect(options).catch(() => {})
           }
         }
       }
       ws.onerror = async (err) => {
         ws.close(1006)
-        if (!options.reconnect || retryCount > options.retries) {
-          return rj(err)
-        }
       }
     })
   }
 
+  async attemptConnect(options) {
+    if (this._retryTimer) return this._retryPromise
+    this._retryCount = 0
+    let rs, rj
+    this._retryPromise = new Promise((_rs, _rj) => {
+      rs = (a) => {
+        this._cancelRetry = undefined
+        _rs(a)
+      }
+      rj = (a) => {
+        this._cancelRetry = undefined
+        _rj(a)
+      }
+      this._cancelRetry = _rj
+    })
+    this._retryTimer = setInterval(async () => {
+      if (this.connected) {
+        rs()
+        this.cancelRetry()
+        return
+      }
+      try {
+        await this._connect(options)
+        rs()
+        this.cancelRetry()
+      } catch (err) {
+        this._retryCount++
+        if (this._retryCount > options.retries) {
+          rj(err)
+          this.cancelRetry()
+        }
+      }
+    }, options.retryWait)
+    return this._retryPromise
+  }
+
+  cancelRetry() {
+    if (this._retryTimer) {
+      clearInterval(this._retryTimer)
+      this._retryTimer = null
+      this._retryPromise = undefined
+      if (this._cancelRetry) {
+        this._cancelRetry()
+        this._cancelRetry = undefined
+      }
+    }
+  }
+
   disconnect() {
+    this.cancelRetry()
     if (!this.connected) return
     this.ws.close(1000)
   }

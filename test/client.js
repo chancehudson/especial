@@ -86,13 +86,16 @@ test('should retry connecting to server', async (t) => {
       client.clearConnectedHandler(disconnectedId)
     }
   })
-  const connectPromise = client.connect()
-  await new Promise(r => setTimeout(r, 5000))
+  const connectPromise = client.connect({
+    retries: 5,
+    retryWait: 1000,
+  })
+  await new Promise(r => setTimeout(r, 3000))
   await new Promise((rs, rj) => app.listen(port, (err) => {
     if (err) rj(err)
     else rs()
   }))
-  await new Promise(r => setTimeout(r, 5000))
+  await new Promise(r => setTimeout(r, 2000))
   await connectPromise
 })
 
@@ -185,13 +188,16 @@ test('connect should accept retry options', async (t) => {
   let server
   setTimeout(() => {
     server = app.listen(port)
-  }, 4000)
-  // wait for 4 retries, then start server
-  await client.connect({
-    retryWait: 1000,
-    retries: 5,
-  })
-  // kill the server and wait for 4 more retries to make sure retryCount reset
+  }, 2000)
+  // wait for 2 retries, then start server
+  await Promise.all([
+    client.connect({
+      retryWait: 1000,
+      retries: 3,
+    }),
+    new Promise(r => setTimeout(r, 2000))
+  ])
+  // kill the server and wait for 2 more retries to make sure retryCount reset
   await new Promise(r => server.close(r))
   client.addConnectedHandler(() => {
     if (client.connected) {
@@ -200,8 +206,28 @@ test('connect should accept retry options', async (t) => {
   })
   setTimeout(() => {
     app.listen(port)
-  }, 4000)
-  await new Promise(r => setTimeout(r, 5000))
+  }, 2000)
+  await new Promise(r => setTimeout(r, 3000))
+})
+
+test('should cancel connection retry', async (t) => {
+  const { app, port, url } = await createServer(false)
+  const client = new EspecialClient(url, WebSocket)
+  const p = client.connect({
+    retryWait: 1000,
+    retries: 5,
+  })
+  await new Promise(r => setTimeout(r, 2000))
+  client.disconnect()
+  try {
+    await Promise.race([
+      p,
+      new Promise(r => setTimeout(r, 1))
+    ])
+    t.fail('Connection should have been cancelled')
+  } catch (err) {
+    t.pass()
+  }
 })
 
 test('should fail to listen for unregistered event', async (t) => {
