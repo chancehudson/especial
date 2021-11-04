@@ -5,6 +5,7 @@ class Especial {
     this.connections = []
     this.handlers = {}
     this.middlewares = []
+    this.uncaughtErrorHandler = undefined
   }
 
   broadcast(_rid, _message, _data) {
@@ -44,6 +45,10 @@ class Especial {
       throw new Error(`Duplicate handler for route "${route}"`)
     }
     this.handlers[route] = handlers
+  }
+
+  handleUncaughtError(fn) {
+    this.uncaughtErrorHandler = fn
   }
 
   listen(port, cb = (() => {})) {
@@ -118,13 +123,20 @@ class Especial {
       ...middlewares.map(({ fn }) => fn),
       ...handlers,
     ]
-    for (const fn of functions) {
-      let nextCalled = false
-      const next = () => nextCalled = true
-      await Promise.resolve(
-        fn(payload.data, send, next, ws)
-      )
-      if (!nextCalled) return
+    try {
+      for (const fn of functions) {
+        let nextCalled = false
+        const next = () => nextCalled = true
+        await fn(payload.data, send, next, ws)
+        if (!nextCalled) return
+      }
+    } catch (err) {
+      // an uncaught error, pass it to a registered function if one exists
+      if (typeof this.uncaughtErrorHandler !== 'function') {
+        send(`An uncaught error occurred "${err.toString()}"`, 2)
+      } else {
+        await this.uncaughtErrorHandler(err, payload.data, send, ws)
+      }
     }
   }
 

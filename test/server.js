@@ -143,3 +143,41 @@ test('should start server without callback', async (t) => {
   app.listen(port)
   t.pass()
 })
+
+test('should catch error in handler', async (t) => {
+  const { app, port, url } = await createServer()
+  app.handle('test', () => {
+    throw new Error('Test error')
+  })
+  const client = new EspecialClient(url, WebSocket)
+  await client.connect()
+  try {
+    const { data, message, status } = await client.send('test')
+    t.fail('Should receive non-0 status')
+  } catch (err) {
+    const { payload } = err
+    t.assert(payload.message.startsWith('An uncaught error occurred'))
+    t.assert(payload.status === 2)
+  }
+})
+
+test('should register uncaught error handler', async (t) => {
+  t.plan(6)
+  const { app, port, url } = await createServer()
+  const handlerError = new Error('Test error')
+  app.handle('test', () => {
+    throw handlerError
+  })
+  const client = new EspecialClient(url, WebSocket)
+  await client.connect()
+  app.handleUncaughtError((err, data, send, ws) => {
+    t.assert(err.toString() === handlerError.toString())
+    t.assert(ws)
+    t.assert(typeof send === 'function')
+    t.assert(typeof data === 'object')
+    send('Error handled')
+  })
+  const { data, message, status } = await client.send('test')
+  t.assert(status === 0)
+  t.assert(message === 'Error handled')
+})

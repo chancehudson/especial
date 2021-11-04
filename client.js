@@ -75,8 +75,10 @@ module.exports = class EspecialClient {
     const _rid = nanoid()
     const p = new Promise((rs, rj) => {
       this.once(_rid, (payload) => {
-        if (payload.status === 0) rs(payload)
-        else rj(payload)
+        if (payload.status === 0) return rs(payload)
+        const error = new Error('Received non-0 status response')
+        error.payload = payload
+        rj(error)
       })
     })
     const payload = {
