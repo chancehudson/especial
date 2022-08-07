@@ -149,8 +149,8 @@ The structure of such a message is the same as a response, with the `_rid` being
   - **_message**: The string message to be sent in the payload
   - **_data**: JSON serializable data to be sent in the payload
 
-`broadcastOne(_rid, _message, _data, ws)`: Broadcast a message to a specific client.
-  - **_rid**: The route id to use for the broadcast
-  - **_message**: The string message to be sent in the payload
-  - **_data**: JSON serializable data to be sent in the payload
+`broadcastOne(ws, _rid, _message, _data)`: Broadcast a message to a specific client.
   - **ws**: The websocket for the client that should receive the broadcast
+  - **_rid**: The route id to use for the broadcast
+  - **_message**: The string message to be sent in the payload, or the data object (if no message).
+  - **_data**: (optional) JSON serializable data to be sent in the payload

@@ -10,11 +10,11 @@ class Especial {
 
   broadcast(_rid, _message, _data) {
     for (const ws of this.connections) {
-      this.broadcastOne(_rid, _message, _data, ws)
+      this.broadcastOne(ws, _rid, _message, _data)
     }
   }
 
-  broadcastOne(_rid, _message, _data, ws) {
+  broadcastOne(ws, _rid, _message, _data) {
     let message = _message
     let data = _data
     if (typeof _message === 'object') {
