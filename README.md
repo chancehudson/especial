@@ -142,7 +142,11 @@ The structure of such a message is the same as a response, with the `_rid` being
 
 `handle(route, ...handlers)`: Register functions to be called for a given route.
   - **route**: A string route to register handlers for. Wildcards are not supported, the route is directly matched during requests
-  - **handlers**: One or more functions to be executed in series for a route
+  - **handlers**: One or more functions to be executed in series for a route. Handler functions will be passed 4 arguments:
+    - `data: Object`: The request data
+    - `send: (message: string, data: object, status: number) => void`: Function to send a response
+    - `next: () => void`: Function to pass request to next middleware or handler
+    - `ws: WebSocket`: The websocket making the request
 
 `broadcast(_rid, _message, _data)`: Broadcast a message to all connected clients.
   - **_rid**: The route id to use for the broadcast
